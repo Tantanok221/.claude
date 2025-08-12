@@ -4,9 +4,9 @@ Comprehensive pre-code-review validation using LLM analysis to ensure code quali
 
 ## Usage
 ```
-/validate <ticket-id> [--lite] [--auto-fix]
-/validate --current [--lite] [--auto-fix]
-/validate --branch <branch-name> [--lite] [--auto-fix]
+/validate <ticket-id> [--auto-fix]
+/validate --current [--auto-fix]
+/validate --branch <branch-name> [--auto-fix]
 ```
 
 ## Instructions
@@ -14,7 +14,6 @@ You are performing comprehensive validation of code changes before they go to co
 
 **ULTRATHINK MODE ACTIVATED**: This is critical quality assurance that requires deep analysis. Use maximum tokens to thoroughly validate all aspects of the code changes, identify potential issues, and provide actionable recommendations. Think deeply about code quality, architectural compliance, testing coverage, and business requirements alignment.
 
-**--lite Mode Instructions**: When `--lite` is used, streamline the validation process by automatically applying low-risk fixes, presenting a concise summary report, and proceeding with auto-approvals for common fixes. Still perform comprehensive analysis but minimize user interaction for routine validations.
 
 **--auto-fix Mode Instructions**: When `--auto-fix` is used, automatically apply approved fixes for common issues like formatting, linting, simple refactoring, and documentation updates. Always show what will be fixed and get user approval before applying changes.
 
@@ -317,30 +316,7 @@ You are performing comprehensive validation of code changes before they go to co
    - Show diff of changes made
    - Re-run validation to confirm fixes
 
-### 11. **Lite Mode Implementation**
-   **When --lite is enabled:**
-   
-   **Streamlined Process:**
-   - Perform all validation checks but minimize user interaction
-   - Auto-approve common fixes without explicit confirmation
-   - Present concise summary report
-   - Proceed with recommended actions automatically
-   
-   **Lite Mode Output:**
-   ```markdown
-   # Quick Validation: {target}
-   
-   **Status**: PASS/FAIL
-   **Issues**: {critical_count} critical, {high_count} high priority
-   **Auto-fixes Applied**: {count} fixes
-   
-   Critical Issues Requiring Attention:
-   - {brief issue list}
-   
-   ✅ Ready for code review / ❌ Address issues first
-   ```
-
-### 12. **Present Results & Next Steps**
+### 11. **Present Results & Next Steps**
    **Final validation output:**
    
    ```markdown
@@ -404,10 +380,10 @@ You are performing comprehensive validation of code changes before they go to co
 # 7. Provide specific fix recommendations
 # 8. Status: NOT READY - address critical security issues first
 
-/validate --current --lite --auto-fix
+/validate --current --auto-fix
 # 1. Validate current branch changes against master
-# 2. Auto-apply formatting fixes, import organization
-# 3. Present concise summary: 1 high priority issue remains
+# 2. Present formatting fixes and ask for approval before applying
+# 3. Generate comprehensive report with detailed analysis
 # 4. Status: CONDITIONAL - ready with attention to performance concern
 
 /validate --branch feat/dashboard-updates

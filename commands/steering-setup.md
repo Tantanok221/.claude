@@ -240,9 +240,23 @@ You are setting up comprehensive steering documents that will provide persistent
    ```
 
 ### 8. **Update Git Exclusions**
+   Ask the user if they want to add the `steering/` directory to `.git/info/exclude`:
+   ```
+   Do you want to add the `steering/` directory to `.git/info/exclude` to keep these 
+   steering documents local and out of version control? 
+   
+   - "yes" - Add steering/ to .git/info/exclude for local-only exclusions
+   - "no" - Skip git exclusion (steering documents may be committed)
+   ```
+   
+   **If user says "yes":**
    - Add `steering/` to `.git/info/exclude` for local-only exclusions
    - Ensure steering documents stay out of version control
    - Confirm successful directory creation and exclusion setup
+   
+   **If user says "no":**
+   - Continue without adding git exclusion
+   - Inform user that steering documents may be committed to the repository
 
 ## Important Notes
 

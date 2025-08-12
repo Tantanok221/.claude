@@ -4,7 +4,7 @@ Create comprehensive, steering-aware issue documents that provide rich context f
 
 ## Usage
 ```
-/create-issue <feature_description> [--ticket-id TICKET_ID] [--lite]
+/create-issue <feature_description> [--ticket-id TICKET_ID]
 ```
 
 ## Instructions
@@ -12,7 +12,6 @@ You are creating well-structured issue documents that integrate with the steerin
 
 **ULTRATHINK MODE ACTIVATED**: This is critical issue creation that requires deep analysis of both the feature requirements and existing architectural context. Use maximum tokens to thoroughly understand the feature, analyze relevant steering documents, and create the most comprehensive issue possible. Think deeply about implementation complexity, architectural patterns, and how this feature fits into the existing system.
 
-**--lite Mode Instructions**: When `--lite` is used, streamline the interaction by making quick, reasonable defaults. The AI will still perform necessary steering analysis but will present a more concise plan and may skip some detailed research steps (e.g., cross-referencing external best practices if not explicitly needed by steering docs). Focus on generating a usable issue document efficiently, trusting the AI's internal process to adhere to steering where possible without excessive user confirmation.
 
 **PURPOSE**: Create steering-aware issues that enable accurate implementation planning and maintain architectural consistency throughout the development workflow.
 
@@ -97,7 +96,6 @@ You are creating well-structured issue documents that integrate with the steerin
    - Look for examples of well-written issues in popular open-source projects for inspiration
    - Search the web for best practices on the topics handled
    - **Integrate steering document patterns** with industry best practices
-   - **[--lite Mode Adjustment]**: In `--lite` mode, this step is less exhaustive, primarily focusing on immediate relevance from steering documents rather than extensive external search.
 
 ### 5. **Handle Ticket ID and Linear Integration**
    **Ticket ID Processing:**
@@ -136,7 +134,6 @@ You are creating well-structured issue documents that integrate with the steerin
    - Present this plan in `<plan>` tags
    - Include any reference links to feature base or other sources that have the source of the user request
    - Please ensure any references to local files with line numbers or repositories are included at the bottom of the issue document for future reference
-   - **[--lite Mode Adjustment]**: In `--lite` mode, the plan summary within `<plan>` tags will be significantly more concise. It will only list the proposed ticket ID and filename, and a brief statement that it will be steering-aware, without detailed breakdown of research or influence from specific steering documents (the AI still *uses* them, but doesn't *present* the influence in detail).
 
 ### 7. **Create Comprehensive Issue Document**
    **Once the plan is approved, draft the steering-aware issue document:**
@@ -207,10 +204,23 @@ You are creating well-structured issue documents that integrate with the steerin
 ### 8. **Save the File**
    - Create the issues directory if it doesn't exist: `mkdir -p issues`
    - Save the issue document as `issues/{ticket_id}-issue.md`
-   - Add the issues directory to the local git exclude file to keep issue documents out of version control:
+   - Ask the user if they want to add the `issues/` directory to `.git/info/exclude`:
+     ```
+     Do you want to add the `issues/` directory to `.git/info/exclude` to keep 
+     issue documents local and out of version control?
+     
+     - "yes" - Add issues/ to .git/info/exclude for local-only exclusions
+     - "no" - Skip git exclusion (issue documents may be committed)
+     ```
+     
+     **If user says "yes":**
      - Use `.git/info/exclude` for local-only exclusions (not shared with the team)
      - Add "issues/" to `.git/info/exclude` if it's not already there
      - Use commands like: `echo "issues/" >> .git/info/exclude` (but check for duplicates first)
+     
+     **If user says "no":**
+     - Continue without adding git exclusion
+     - Inform user that issue documents may be committed to the repository
    - Ensure proper file permissions and formatting
 
 ### 9. **Final Output**
@@ -218,7 +228,6 @@ You are creating well-structured issue documents that integrate with the steerin
    - Include the full file path where it will be saved
    - **Include steering document consultation summary**
    - Do not include any explanations or notes outside of these tags in your final output
-   - **[--lite Mode Adjustment]**: In `--lite` mode, skip the explicit user confirmation step for the plan. Instead, generate the issue document immediately after the brief plan presentation and confirm its creation. The AI will assume approval for a quick generation.
 
 ## Important Notes
 
@@ -259,14 +268,14 @@ You are creating well-structured issue documents that integrate with the steerin
 # 6. Creates comprehensive issue with architectural context + Linear ticket reference
 # 7. Includes implementation hints for /plan command
 
-/create-issue "optimize database queries for user dashboard" --lite
+/create-issue "optimize database queries for user dashboard"
 # 1. Check git origin → GitLab detected → master branch is "master"
 # 2. Current branch: master → Already on correct branch
 # 3. Loads steering: database-conventions.md, performance-standards.md, system-overview.md
-# 4. Analyzes performance requirements against existing patterns (internal)
-# 5. Automatically generates descriptive ticket ID (e.g., "optimize-user-dashboard-queries")
-# 6. Presents brief plan: "Creating issue for 'optimize database queries for user dashboard' with ID 'optimize-user-dashboard-queries'."
-# 7. Automatically proceeds to create detailed issue with performance criteria
+# 4. Analyzes performance requirements against existing patterns
+# 5. Asks user for ticket ID or generates descriptive one (e.g., "optimize-user-dashboard-queries")
+# 6. Presents comprehensive plan with steering document influence details
+# 7. Waits for user confirmation before creating detailed issue
 # 8. Ready for accurate /plan task breakdown
 
 /create-issue "implement user profile page" --ticket-id PG-456

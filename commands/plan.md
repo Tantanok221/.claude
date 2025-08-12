@@ -4,16 +4,18 @@ Load issue context, analyze implementation requirements, and create a comprehens
 
 ## Usage
 ```
-/plan <ticket-id> [--lite]
-/plan <feature-description> [--lite]
+/plan <ticket-id>
+/plan <feature-description>
+/plan
 ```
+
+**Note**: When no parameters are provided, the command will use cached session data from previous work in this project, or prompt you to specify what to work on.
 
 ## Instructions
 You are helping Claude Code understand a specific issue by loading the issue document and relevant steering context. This command provides comprehensive context for issue analysis and implementation planning.
 
 **ULTRATHINK MODE ACTIVATED**: This is critical issue analysis that requires deep understanding. Use maximum tokens to thoroughly analyze the issue, identify all relevant steering documents, and provide comprehensive context. Think deeply about implementation approaches, edge cases, and how this issue fits into the broader system architecture.
 
-**--lite Mode Instructions**: When `--lite` is used, streamline the planning process by making quick, reasonable defaults. The AI will still perform comprehensive analysis and generate a detailed todo list internally, but it will present a more concise summary and automatically proceed with file creation without explicit user confirmation. Focus on generating a usable plan efficiently.
 
 ## Process
 
@@ -62,22 +64,43 @@ You are helping Claude Code understand a specific issue by loading the issue doc
    echo "✓ Created and switched to: ${expected_branch}"
    ```
 
-### 2. **Identify Work Target**
-   **If ticket-id provided:**
+### 2. **Session Cache & Work Target Identification**
+   **Handle session caching and work target identification:**
+   
+   **Session Cache Template:**
+   ```json
+   {
+     "lastTicketId": "AUTH-123",
+     "lastFeatureDescription": "add OAuth login support", 
+     "timestamp": "2025-01-15T10:30:00Z",
+     "lastCommand": "plan"
+   }
+   ```
+   
+   **Session Cache Logic:**
+   - If ticket-id or feature-description provided: Use the provided parameters
+   - If no parameters provided: Check for `.claude-session-cache.json` in project root
+   - If cache exists and valid: Use cached ticket ID or feature description, show "✓ Using recent work: {value}"
+   - If no cache or cache invalid: Prompt user with: "No recent work found. Please provide either:
+     - Ticket ID (e.g., AUTH-123)  
+     - Feature description (e.g., add OAuth support)"
+   - If user provides nothing: Exit with "No work specified"
+   
+   **Work Target Identification:**
+   
+   **If ticket-id obtained:**
    - Look for the issue file: `issues/{ticket-id}-issue.md`
    - If exact match not found, search for similar ticket IDs in issues directory
    - If multiple matches, present options to user
-   - **[--lite Mode Adjustment]**: If multiple matches, automatically select the top 1 most relevant issue without user interaction.
    
-   **If feature-description provided:**
+   **If feature-description obtained:**
    - Search all issue documents in `issues/` directory for relevant content
    - Match against issue titles, descriptions, and tags
    - Present top 3 most relevant issues to user
    - Ask user to select which issue to work on, or offer to create new issue
    - If no relevant issues found, suggest creating new issue with `/create-issue`
-   - **[--lite Mode Adjustment]**: If multiple relevant issues are found, automatically select the top 1 most relevant issue without asking the user to select. If no relevant issues are found, still suggest `/create-issue`.
 
-### 2. **Load and Analyze Issue Document**
+### 3. **Load and Analyze Issue Document**
    - Look for the issue file: `issues/{ticket-id}-issue.md`
    - If file doesn't exist, inform user and suggest:
      - Check if ticket ID is correct
@@ -90,55 +113,80 @@ You are helping Claude Code understand a specific issue by loading the issue doc
      - Note technical constraints and dependencies
      - Extract acceptance criteria and success metrics
      - Identify potential complexity areas and edge cases
+     - **Extract keywords for steering document mapping** (authentication, database, ui, api, testing, deployment, performance, security, etc.)
 
-### 2. **Determine Relevant Steering Documents**
-   Based on issue analysis, intelligently select relevant steering documents:
+### 4. **Smart Document Selection Logic**
+   **Read steering configuration and apply mappings dynamically:**
    
-   **Architecture Documents (select relevant):**
-   - `steering/architecture/system-overview.md` - For system-wide changes
-   - `steering/architecture/data-flow.md` - For data-related issues
-   - `steering/architecture/integration-patterns.md` - For external integration work
-   - `steering/architecture/security-architecture.md` - For security-related issues
+   **Load Steering Configuration:**
+   - Read `steering/config.md` for always-include docs and feature mappings
+   - If config.md doesn't exist, use fallback default behavior
    
-   **Standards Documents (select relevant):**
-   - `steering/standards/coding-standards.md` - For all development work
-   - `steering/standards/api-design-guidelines.md` - For API changes
-   - `steering/standards/database-conventions.md` - For database work
-   - `steering/standards/testing-standards.md` - For testing requirements
-   
-   **Pattern Documents (select relevant):**
-   - `steering/patterns/common-patterns.md` - For implementation guidance
-   - `steering/patterns/anti-patterns.md` - For avoiding known issues
-   - `steering/patterns/decision-trees.md` - For implementation choices
-   
-   **Context Documents (select relevant):**
-   - `steering/context/business-domain.md` - For business logic issues
-   - `steering/context/technical-constraints.md` - For constraint awareness
-   - `steering/context/stakeholder-map.md` - For stakeholder impact
-
-### 3. **Smart Document Selection Logic**
-   **Only load steering documents that are directly relevant:**
-   
+   **Apply Config-Based Mappings:**
    ```
-   IF issue involves API changes → load api-design-guidelines.md
-   IF issue involves database → load database-conventions.md + data-flow.md
-   IF issue involves frontend → load coding-standards.md + common-patterns.md
-   IF issue involves security → load security-architecture.md + technical-constraints.md
-   IF issue involves integrations → load integration-patterns.md + system-overview.md
-   IF issue involves business logic → load business-domain.md + decision-trees.md
+   # Read steering/config.md and extract:
+   # 1. Always Include Steering Docs (loaded for every plan)
+   # 2. Feature Pattern Mappings (loaded based on issue content analysis)
+   
+   Example config.md structure:
+   ## Always Include Steering Docs
+   - coding-standards.md
+   - anti-patterns.md
+   - system-overview.md
+   
+   ## Feature Pattern Mappings
+   - **authentication** → security-architecture.md, api-design-guidelines.md
+   - **database** → database-conventions.md, data-flow.md
+   - **ui** → ui-library-guidelines.md, coding-standards.md
+   - **api** → api-design-guidelines.md, integration-patterns.md
+   - **testing** → testing-standards.md, common-patterns.md
+   - **deployment** → system-overview.md, technical-constraints.md
+   - **performance** → technical-constraints.md, common-patterns.md
+   - **security** → security-architecture.md, technical-constraints.md
    ```
    
-   **Always load:**
-   - `steering/standards/coding-standards.md` (universal)
-   - `steering/patterns/anti-patterns.md` (prevent mistakes)
+   **Issue Analysis & Mapping Application:**
+   - Analyze issue content for keywords (authentication, database, ui, api, etc.)
+   - Match keywords against config.md feature mappings
+   - Load corresponding steering documents from mappings
+   - Always load the "Always Include" documents from config
+   
+   **Fallback Behavior (if config.md missing):**
+   - Always load: coding-standards.md, anti-patterns.md
+   - Use basic keyword matching for common patterns
 
-### 4. **Load Selected Steering Documents**
-   - Read only the identified relevant steering documents
+### 5. **Load Selected Steering Documents**
+   **Based on config.md mappings and issue analysis:**
+   
+   - Read the identified steering documents from config.md mappings
+   - Always load the "Always Include Steering Docs" from config.md
+   - Load feature-specific documents based on keyword matches
    - Parse each document for context relevant to the issue
    - Note any conflicts or special considerations
    - Identify patterns and standards that apply to this specific issue
+   
+   **Example Document Loading Process:**
+   ```
+   Issue analysis finds: "authentication", "api", "database" keywords
+   
+   From config.md mappings:
+   - Always include: coding-standards.md, anti-patterns.md, system-overview.md
+   - authentication → security-architecture.md, api-design-guidelines.md
+   - api → api-design-guidelines.md, integration-patterns.md  
+   - database → database-conventions.md, data-flow.md
+   
+   Final document list:
+   ✓ coding-standards.md (always include)
+   ✓ anti-patterns.md (always include)
+   ✓ system-overview.md (always include)
+   ✓ security-architecture.md (from authentication mapping)
+   ✓ api-design-guidelines.md (from authentication + api mappings)
+   ✓ integration-patterns.md (from api mapping)
+   ✓ database-conventions.md (from database mapping)
+   ✓ data-flow.md (from database mapping)
+   ```
 
-### 5. **Comprehensive Context Analysis**
+### 6. **Comprehensive Context Analysis**
    **Synthesize issue + steering context:**
    
    **Issue Understanding:**
@@ -165,14 +213,14 @@ You are helping Claude Code understand a specific issue by loading the issue doc
    - Dependencies that could cause issues
    - Testing strategies needed
 
-### 6. **Present Complete Todo List Content & Get Confirmation**
-   **CRITICAL: DO NOT CREATE ANY FILES until user confirms the plan**
+### 7. **Present Todo List for Review & Iteration**
+   **CRITICAL: DO NOT CREATE ANY FILES - This is an iterative planning phase**
    
-   **Show Complete Todo List File Content:**
+   **Show Complete Todo List Content for Review:**
    ```markdown
-   I'm ready to create the following todo list file:
+   📋 Here's the proposed todo list for review:
    
-   **File: `work-progress/{ticket-id}.md`**
+   **Planned File: `work-progress/{ticket-id}.md`**
    
    ---
    
@@ -241,9 +289,9 @@ You are helping Claude Code understand a specific issue by loading the issue doc
    ---
    ```
    
-   **Present Plan Summary:**
+   **Plan Summary & Review Options:**
    ```markdown
-   📋 Implementation plan and todo list ready!
+   📋 Todo list ready for review:
    
    **Plan Summary:**
    - {X} implementation tasks across {Y} phases
@@ -251,34 +299,57 @@ You are helping Claude Code understand a specific issue by loading the issue doc
    - Follows {steering-patterns} patterns and guidelines
    - Estimated complexity: {overall-complexity}
    
-   ❓ Do you want me to create this todo list file at `work-progress/{ticket-id}.md`?
+   **Review & Modify Options:**
+   - "modify task X to [description]" - Change specific tasks
+   - "add task [description] to phase Y" - Add new tasks
+   - "remove task X" - Remove specific tasks
+   - "add phase [name]" - Add new implementation phase
+   - "change complexity of task X to [low/medium/high]" - Adjust estimates
+   - "move task X to phase Y" - Reorganize task phases
+   - "change dependencies of task X to [deps]" - Adjust task dependencies
    
-   Please review the complete content above and let me know:
+   **When satisfied with the todo list:**
+   - "create file" or "save the todo list" - Create the work-progress/{ticket-id}.md file
+   - "abort" - Cancel planning session without creating file
    
-   Options:
-   - "yes" or "create" - Create the todo list file exactly as shown
-   - "modify task X" - Change specific tasks (e.g., "modify task 3 to include error handling")
-   - "add phase" - Add additional implementation phases
-   - "change complexity" - Adjust complexity estimates
-   - "abort" - Cancel planning session
+   ⚠️ **Note: I will NOT create any files until you explicitly tell me to "create file" or "save the todo list"**
    ```
    
-   **WAIT FOR USER RESPONSE - DO NOT CREATE FILES WITHOUT EXPLICIT CONFIRMATION**
+   **ENTER ITERATIVE PLANNING MODE - WAIT FOR USER MODIFICATIONS OR CREATION COMMAND**
    
-   **[--lite Mode Adjustment]**: In `--lite` mode, the "Present Plan Summary" will be significantly more concise, for example:
-   ```markdown
-   📋 Plan for {ticket-id} generated.
-   
-   **Plan Summary:**
-   - {X} tasks across {Y} phases.
-   - Estimated complexity: {overall-complexity}.
-   
-   Automatically creating `work-progress/{ticket-id}.md`.
-   ```
-   The explicit confirmation "❓ Do you want me to create this todo list file..." will be skipped, and the file creation will proceed automatically.
 
-### 7. **Create Todo List File (Only After Confirmation)**
-   **After user confirmation, create the external todo list:**
+### 8. **Iterative Planning Mode**
+   **Handle user modifications to the todo list:**
+   
+   **For each user request to modify the todo list:**
+   - Apply the requested changes to the todo list structure
+   - Update task numbers, dependencies, and phases as needed
+   - Re-present the complete updated todo list for review
+   - Continue iterating until user is satisfied
+   - **DO NOT CREATE FILES** during this iterative process
+   
+   **Common modification patterns:**
+   ```markdown
+   User: "modify task 3 to include database migration setup"
+   → Update task 3 description and add migration-related files/steering docs
+   → Show updated complete todo list
+   → Wait for more modifications or creation command
+   
+   User: "add task 'write integration tests' to phase 3"
+   → Add new task to Phase 3 with appropriate complexity and dependencies
+   → Renumber subsequent tasks if needed
+   → Show updated complete todo list
+   → Wait for more modifications or creation command
+   
+   User: "remove task 2"
+   → Remove task 2 and update dependencies of other tasks
+   → Renumber tasks appropriately
+   → Show updated complete todo list
+   → Wait for more modifications or creation command
+   ```
+
+### 9. **Create Todo List File (Only After Explicit Command)**
+   **Only when user says "create file" or "save the todo list":**
    
    **File Creation Process:**
    - Create directory: `work-progress/` if it doesn't exist
@@ -295,12 +366,26 @@ You are helping Claude Code understand a specific issue by loading the issue doc
    - **Context Hints** - Enough info for `/continue` to load relevant context
    
    **Git Exclusion:**
+   Ask the user if they want to add the `work-progress/` directory to `.git/info/exclude`:
+   ```
+   Do you want to add the `work-progress/` directory to `.git/info/exclude` to keep 
+   todo lists local and out of version control?
+   
+   - "yes" - Add work-progress/ to .git/info/exclude for local-only exclusions
+   - "no" - Skip git exclusion (todo lists may be committed)
+   ```
+   
+   **If user says "yes":**
    - Add `work-progress/` to `.git/info/exclude`
    - Ensure steering/ is also in `.git/info/exclude` (from steering setup)
    - Keep all planning documents local and out of version control
    - Ensure clean git history
+   
+   **If user says "no":**
+   - Continue without adding git exclusion
+   - Inform user that todo lists may be committed to the repository
 
-### 8. **Planning Output**
+### 10. **Planning Output**
    **Provide planning completion summary:**
    
    ```markdown
@@ -329,11 +414,20 @@ You are helping Claude Code understand a specific issue by loading the issue doc
    - **Steering integration** - Relevant docs loaded per task
    ```
 
-### 9. **Optimization Notes**
+### 11. **Update Session Cache & Optimization Notes**
+   
+   **Session Cache Update (After Successful Planning):**
+   - Write the current ticket ID and feature description to `.claude-session-cache.json` using the unified template
+   - Include timestamp and command name ("plan") in the cache
+   - Add cache file to `.git/info/exclude` to keep it local
+   - Show "✓ Session cache updated for future /plan and /continue commands"
+   
+   **Optimization Notes:**
    - **Context Efficiency**: Only load steering documents directly relevant to the issue
-   - **Prevent Context Rot**: Avoid loading unnecessary documentation
+   - **Prevent Context Rot**: Avoid loading unnecessary documentation  
    - **Smart Selection**: Use issue content to determine relevance
    - **Comprehensive Coverage**: Ensure all relevant guidance is included
+   - **Session Continuity**: Cache successful planning for seamless workflow resumption
 
 ## Important Notes
 
@@ -341,7 +435,7 @@ You are helping Claude Code understand a specific issue by loading the issue doc
 - **SESSION PREPARATION**: Prepares for session-based development workflow with `/continue` command
 - **EXTERNAL TODO LIST**: Creates persistent state file that survives across development sessions
 - **STEERING REFERENCES**: Todo list contains steering document references, not duplicate content
-- **USER CONFIRMATION REQUIRED**: Never create todo list files without explicit user approval (unless `--lite` mode is active)
+- **USER CONFIRMATION REQUIRED**: Never create todo list files without explicit user approval  
 - **CONTEXT EFFICIENCY**: Todo list designed for minimal context loading in subsequent sessions
 - **RESUMABLE WORKFLOW**: Perfect for enterprise development that spans multiple sessions/days
 
@@ -359,7 +453,7 @@ You are helping Claude Code understand a specific issue by loading the issue doc
 
 **If ticket ID ambiguous:**
 - Show similar ticket IDs
-- Ask user to clarify which issue they mean (unless `--lite` mode is active, then auto-select top 1)
+- Ask user to clarify which issue they mean
 
 ## Example Usage
 
@@ -370,19 +464,25 @@ You are helping Claude Code understand a specific issue by loading the issue doc
 # 3. Switch to main, fetch/pull latest, create pg/tk-fix-user-login
 # 4. Load: issues/fix-user-login-issue.md
 # 5. Load relevant steering docs for analysis
-# 6. Create comprehensive todo list with 8 tasks across 3 phases
-# 7. Present plan summary to user
-# 8. User approves → Create work-progress/fix-user-login.md
-# 9. Ready for: /continue fix-user-login
+# 6. Present todo list with 8 tasks across 3 phases for review
+# 7. User: "modify task 5 to include error handling"
+# 8. Show updated todo list with modified task 5
+# 9. User: "add task for user notification after login success"
+# 10. Show updated todo list with new task added
+# 11. User: "create file"
+# 12. Create work-progress/fix-user-login.md
+# 13. Ready for: /continue fix-user-login
 
-/plan "add payment processing" --lite
+/plan "add payment processing"
 # 1. Check git origin → GitLab detected → master branch is "master"
-# 2. Search issues for payment-related work. Auto-selects top match (e.g., add-stripe-integration-issue.md).
+# 2. Search issues for payment-related work and present top matches for user selection
 # 3. Create feat/add-payment-processing branch
-# 4. Load issue + relevant steering documents (internally)
-# 5. Presents concise plan summary.
-# 6. Automatically creates work-progress/add-stripe-integration.md
-# 7. Ready for: /continue add-stripe-integration
+# 4. Load issue + relevant steering documents
+# 5. Present todo list for review with payment integration tasks
+# 6. User iterates on the plan: "add security validation tasks", "modify error handling"
+# 7. User: "save the todo list"
+# 8. Create work-progress/add-stripe-integration.md
+# 9. Ready for: /continue add-stripe-integration
 ```
 
 ## What Happens After This Command?
