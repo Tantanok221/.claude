@@ -99,13 +99,35 @@ You are creating well-structured issue documents that integrate with the steerin
    - **Integrate steering document patterns** with industry best practices
    - **[--lite Mode Adjustment]**: In `--lite` mode, this step is less exhaustive, primarily focusing on immediate relevance from steering documents rather than extensive external search.
 
-### 5. **Handle Ticket ID**
+### 5. **Handle Ticket ID and Linear Integration**
+   **Ticket ID Processing:**
    - If a ticket ID is provided via --ticket-id, use that ID
    - If no ticket ID is provided:
      a. Ask the user if they want to provide a custom ticket ID
      b. Wait for user response
      c. If user provides a ticket ID, use it
      d. If user declines or says they don't want to provide one, then create a short, descriptive ticket ID by summarizing the feature description into 2-4 words, using kebab-case format (e.g., "fix-login-button", "add-dark-mode", "mobile-safari-bug")
+
+   **Linear MCP Integration:**
+   - If a ticket ID is provided and follows Linear format (e.g., "PG-123"), attempt to fetch ticket details from Linear:
+     ```
+     Use MCP Linear tools to:
+     1. Fetch issue details by ID using mcp__linear-server__get_issue
+     2. Extract relevant information: title, description, status, priority, assignee, team, project, labels, estimate, url, gitBranchName
+     3. Include Linear URL and comprehensive project context
+     4. Use this information to enhance the issue document with Linear context
+     ```
+   
+   **Linear Information Integration:**
+   - If Linear ticket found:
+     - Use Linear title and description as additional context
+     - Include Linear metadata: status, priority, assignee, team, project, labels, estimate, due_date
+     - Reference the Linear ticket URL in the issue document
+     - Cross-reference Linear requirements with local steering documents
+     - Enhance business context with Linear project and team information
+   - If Linear ticket not found or MCP unavailable:
+     - Continue with standard issue creation process
+     - Note the ticket ID for future reference
 
 ### 6. **Present Steering-Informed Plan**
    - Based on your research and steering analysis, outline a plan for creating the issue document
@@ -129,6 +151,7 @@ You are creating well-structured issue documents that integrate with the steerin
    - **Status**: open
    - **Created**: {timestamp}
    - **Ticket ID**: {ticket-id}
+   - **Linear Context**: {linear-ticket-info-if-available}
    
    ## Business Context
    - **Problem Statement**: What business problem does this solve?
@@ -176,6 +199,7 @@ You are creating well-structured issue documents that integrate with the steerin
    
    ## References
    - **Steering Documents**: List of steering docs consulted
+   - **Linear Ticket**: {linear-ticket-url-if-available}
    - **External References**: APIs, libraries, documentation
    - **Related Issues**: Connected features or dependencies
    ```
@@ -199,10 +223,11 @@ You are creating well-structured issue documents that integrate with the steerin
 ## Important Notes
 
 - **STEERING INTEGRATION**: Always read relevant steering documents to inform issue creation
+- **LINEAR INTEGRATION**: When ticket IDs are provided, fetch Linear context to enhance issue quality
 - **ARCHITECTURE AWARENESS**: Issues should reflect existing architectural patterns and constraints
 - **PLAN OPTIMIZATION**: Create issues with sufficient detail for accurate `/plan` task breakdown
 - **TECHNICAL DEPTH**: Include technical requirements that enable direct implementation planning
-- **BUSINESS CONTEXT**: Maintain clear connection between business value and technical implementation
+- **BUSINESS CONTEXT**: Maintain clear connection between business value and technical implementation (enhanced by Linear context when available)
 - **CONSISTENCY**: Ensure issue aligns with established patterns and standards from steering documents
 
 ## Error Handling
@@ -212,6 +237,11 @@ You are creating well-structured issue documents that integrate with the steerin
 - Suggest running `/steering-setup` first for better issue quality
 - Continue with basic issue creation but note limitations
 
+**If Linear MCP unavailable or ticket not found:**
+- Continue with standard issue creation process
+- Log the ticket ID for future reference
+- Note in the issue document that Linear context was not available
+
 **If feature description unclear:**
 - Ask clarifying questions about business context
 - Request technical requirements if missing
@@ -220,13 +250,14 @@ You are creating well-structured issue documents that integrate with the steerin
 ## Example Usage
 
 ```bash
-/create-issue "add OAuth login support" --ticket-id AUTH-123
+/create-issue "add OAuth login support" --ticket-id PG-123
 # 1. Check git origin → GitHub detected → master branch is "main"
 # 2. Current branch: feature/other-work → Switch to main and update
-# 3. Loads steering: security-architecture.md, api-design-guidelines.md, integration-patterns.md
-# 4. Analyzes OAuth requirements against existing auth patterns
-# 5. Creates comprehensive issue with architectural context
-# 6. Includes implementation hints for /plan command
+# 3. Fetches Linear ticket PG-123 details via MCP
+# 4. Loads steering: security-architecture.md, api-design-guidelines.md, integration-patterns.md
+# 5. Analyzes OAuth requirements against existing auth patterns + Linear context
+# 6. Creates comprehensive issue with architectural context + Linear ticket reference
+# 7. Includes implementation hints for /plan command
 
 /create-issue "optimize database queries for user dashboard" --lite
 # 1. Check git origin → GitLab detected → master branch is "master"
@@ -237,6 +268,13 @@ You are creating well-structured issue documents that integrate with the steerin
 # 6. Presents brief plan: "Creating issue for 'optimize database queries for user dashboard' with ID 'optimize-user-dashboard-queries'."
 # 7. Automatically proceeds to create detailed issue with performance criteria
 # 8. Ready for accurate /plan task breakdown
+
+/create-issue "implement user profile page" --ticket-id PG-456
+# 1. Fetches Linear ticket PG-456 → Gets title, description, priority, assignee
+# 2. Uses Linear context: "User Profile Enhancement - Add avatar upload and bio editing"
+# 3. Cross-references Linear requirements with local steering documents
+# 4. Creates issue with Linear metadata and URL reference
+# 5. Enhanced business context from Linear ticket description
 ```
 
 ## What Happens After This Command?
