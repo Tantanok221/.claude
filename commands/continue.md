@@ -178,6 +178,7 @@ Load the current task from an existing todo list and implement it using referenc
 
 ### 6. **Implement Task (Interactive Coding Session)**
    After user confirmation of the overall task plan:
+   - **IMPORTANT**: This session focuses on implementing ONLY the current task from the todo list. Do not proceed to additional tasks.
    - **Enter Interactive Loop**: The AI will now guide the user through the current task's implementation in an iterative manner, breaking it into smaller, logical micro-tasks until the current task from the todo list is resolved.
    - **Execute Micro-Task**: Perform a small, logical part of the current task. This might involve:
      - Creating a new file.
@@ -206,20 +207,22 @@ Load the current task from an existing todo list and implement it using referenc
      - Prompt the user for review and next actions for *this specific micro-task*.
      - Wait for explicit user instruction.
      - Options provided to the user:
-       - **"Apply and Continue"** / **"Looks good"**: Apply the proposed changes to the actual files and proceed to the next micro-task or the next logical step within the current task.
+       - **"Apply and Continue"** / **"Looks good"**: Apply the proposed changes to the actual files and proceed to the next micro-task within the CURRENT TASK ONLY.
        - **"Modify X to Y"** / **"Change this line to..."**: Request specific changes to the proposed code or approach for the current micro-task.
        - **"Show me changes in file Z before applying"**: Request a detailed diff or full file content before applying.
        - **"Undo last change"**: Revert the last proposed (and not yet applied) change or applied micro-task.
        - **"Change approach for this step to use {different-method}"**: Request a different strategy for the current micro-task.
        - **"Skip this step"**: Move past the current micro-task without applying changes (with a warning if it's a dependency for future steps).
-       - **"Done Task" / "Finish this task"**: Indicate that the *current task from the todo list* is complete and exit the interactive session to proceed to the update and commit step.
+       - **"Done Task" / "Finish this task"**: Indicate that the *current task from the todo list* is complete and exit the interactive session to proceed to the update and commit step. **This is the ONLY way to complete the session.**
        - **"Cancel"**: Exit the interactive session, abandoning the current task without marking it complete.
    - **Apply Changes (on User Approval)**: Only write to files or make persistent changes to the codebase *after* explicit user approval for that specific micro-task.
    - **Loop or Conclude**:
-     - If more sub-steps remain for the current task (as inferred by AI or guided by user), continue the interactive loop.
+     - If more sub-steps remain for the CURRENT TASK ONLY (as inferred by AI or guided by user), continue the interactive loop.
      - If the user explicitly says "Done Task" or the AI infers the current task's completion and all micro-tasks are approved: Proceed to "Update Progress & Commit Task."
+     - **NEVER proceed to additional tasks from the todo list - each `/continue` execution handles exactly ONE task.**
 
    **Key Principles of Interactive Session:**
+   - **Single Task Focus**: Work on ONLY the current task from the todo list. Never proceed to additional tasks.
    - **Granularity**: Break down the task into the smallest actionable units to allow precise user control.
    - **Transparency**: Always show proposed changes (code snippets, diffs) clearly before applying them to files.
    - **Control**: User maintains full control over the process, guiding the AI through each incremental step.
@@ -298,22 +301,8 @@ Load the current task from an existing todo list and implement it using referenc
    - Next: Task #{next-number} ready for implementation
    ```
 
-### 9. **Cache Update Confirmation**
-   **Ask user about updating cache information:**
-   ```markdown
-   Would you like to update the session cache with learnings from this task?
-   This will help future /continue sessions resume with context from this work.
-   
-   Options:
-   - "Yes, update cache" - Update both session and context caches
-   - "No" or "Skip" - Continue without updating caches
-   ```
-   - **WAIT FOR USER RESPONSE**
-   - If user declines, skip to **Show Next Steps** (Step 11)
-   - If user accepts, proceed to cache updates (Step 10)
-
-### 10. **Update Session Caches**
-   **Update both session and context caches (only if user confirmed in Step 9):**
+### 9. **Update Session Caches (Mandatory)**
+   **Automatically update both session and context caches for single-task workflow:**
    
    **Update Session Cache:**
    **Use Session Cache Agent**: Use the session-cache-agent to update the session cache with current work details.
@@ -335,15 +324,34 @@ Load the current task from an existing todo list and implement it using referenc
      - **Integration Patterns**: Successful integration strategies and patterns discovered for third-party services or libraries
    - Show: "✓ Updated context cache with session learnings"
 
-### 11. **Show Next Steps**
+### 10. **Show Next Steps**
    **Present final completion summary and next actions:**
    ```markdown
-   ## Next Steps
-   - Continue work: `/clear` then `/continue {ticket-id}`
-   - Review progress: Check work-progress/{ticket-id}.md
-   - Overall progress: {completed}/{total} tasks completed
+   ## ✅ Task Complete - Single Task Workflow
    
-   Ready for next development session!
+   **Task Completed**: Task #{task-number} from {ticket-id}
+   **Progress**: {completed}/{total} tasks completed
+   
+   ## ⚡ Next Steps - Required for Continued Work
+   
+   **IMPORTANT**: Each `/continue` execution handles exactly ONE task to maintain focused context and clean session management.
+   
+   **To continue with the next task:**
+   1. **Required**: Run `/clear` to reset session context
+   2. **Then**: Run `/continue {ticket-id}` to start the next task
+   
+   **Alternative options:**
+   - Review progress: Check work-progress/{ticket-id}.md
+   - View all tasks: Open todo list in work-progress/{ticket-id}.md
+   - Switch projects: Use `/clear` then `/continue {different-ticket-id}`
+   
+   **📋 Session Management:**
+   - ✅ Context cache updated with task learnings
+   - ✅ Session cache updated for future sessions  
+   - ✅ Todo list updated with completed task
+   - ✅ Changes committed to git
+   
+   Ready for next development session! Use `/clear` then `/continue` to proceed.
    ```
 
 ## Example Usage
@@ -383,9 +391,12 @@ Load the current task from an existing todo list and implement it using referenc
 ```
 
 ## Important Notes
-- **ONE TASK AT A TIME**: Focus on current task, ignore completed/future tasks during the interactive session.
+- **SINGLE TASK EXECUTION**: Each `/continue` command handles exactly ONE task from the todo list. Never proceed to additional tasks within a single session.
+- **MANDATORY SESSION RESET**: After completing a task, user MUST run `/clear` then `/continue` to start the next task with clean context.
 - **USER CONFIRMATION**: Never modify files without explicit approval for each incremental change or the overall task plan. **Never commit without explicit user approval.**
-- **PROGRESS TRACKING**: Update todo list automatically after the *entire task* is completed.
+- **AUTOMATIC CACHE UPDATES**: Session cache, context cache, and todo list are automatically updated after each task completion - no user confirmation needed.
+- **PROGRESS TRACKING**: Update todo list automatically after the *entire task* is completed, marking only the current task as done.
 - **STEERING COMPLIANCE**: Always follow referenced patterns and standards, re-evaluating if user feedback necessitates a different approach.
 - **MICRO-COMMITS**: Each completed task from the todo list results in a dedicated, small Git commit, promoting clear history and easy reverts.
 - **TECH DOC AGENT INTEGRATION**: Automatically use tech-doc-agent for library/framework documentation during task implementation.
+- **FOCUSED CONTEXT**: Single-task approach maintains focused context and prevents context pollution between tasks.
