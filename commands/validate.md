@@ -21,77 +21,22 @@ You are performing comprehensive validation of code changes before they go to co
 
 ## Process
 
-### 1. **Git Branch Management & Target Identification**
-   **Determine what to validate and ensure correct git context:**
+
+### 1. **Git Branch Management**
+   **Use Git Branch Manager Agent**: Use the git-branch-manager agent to ensure the correct Git branch is active for the task, handling all branch checking and switching operations.
    
-   **Determine Master Branch:**
-   - Check git origin URL: `git remote get-url origin`
-   - If origin contains "gitlab" → master branch is "master"
-   - If origin contains "github" → master branch is "main"
-   - Default to "main" if unable to determine
+   **Context for Agent**: The expected branch pattern will be derived from the `ticket-id` or `feature-description` obtained in Step 2 (Session Cache & Todo List Loading). The agent will determine the appropriate branch name and handle switching if needed.
    
-   **Validation Target Identification:**
-   ```bash
-   # For ticket-id provided
-   if ticket_id_provided:
-     target_branch = "pg/tk-{ticket-id}"
-     compare_against = master_branch
-     validation_scope = "feature-branch"
-   
-   # For --current flag
-   elif current_flag:
-     target_branch = current_branch
-     compare_against = master_branch
-     validation_scope = "current-changes"
-   
-   # For --branch flag
-   elif branch_provided:
-     target_branch = provided_branch
-     compare_against = master_branch
-     validation_scope = "specified-branch"
-   ```
-   
-   **Branch Validation Process:**
-   ```bash
-   # Check current branch matches target
-   current_branch=$(git branch --show-current)
-   
-   if current_branch != target_branch and not current_flag:
-     echo "✗ Not on target branch. Current: ${current_branch}, Expected: ${target_branch}"
-     echo "Switch to correct branch? (y/n)"
-     # Handle branch switching if user confirms
-   else:
-     echo "✓ On correct branch: ${current_branch}"
-   ```
-   
-   **Change Detection:**
-   ```bash
-   # Get all changes for validation
-   git fetch origin ${master_branch}
-   changed_files=$(git diff origin/${master_branch}...HEAD --name-only)
-   commit_count=$(git rev-list --count origin/${master_branch}...HEAD)
-   
-   echo "Validation scope: ${commit_count} commits, ${#changed_files[@]} files"
-   ```
+   **Agent Execution**: Wait for the git-branch-manager agent to complete its operation. If the agent indicates a failure (e.g., uncommitted changes conflict, Git operation failure), notify the user of the specific issue and exit this command.
 
 ### 2. **Load Steering Context & Validation Rules**
    **Load steering configuration and validation-specific context:**
    
-   **Load Steering Configuration:**
-   - Read `steering/config.md` for always-include docs and feature mappings
-   - If config.md doesn't exist, use default validation rules
+   **Use Steering Context Reader Agent**: Use the steering-context-reader agent to gather relevant steering documentation for validating the current changes.
    
-   **Determine Validation Context:**
-   ```
-   Load always-include docs from config.md, then analyze changes to determine:
-   IF changes involve API files → load api-design-guidelines.md
-   IF changes involve database → load database-conventions.md, data-flow.md
-   IF changes involve security → load security-architecture.md
-   IF changes involve UI components → load ui-guidelines.md (if exists)
-   IF changes involve integrations → load integration-patterns.md
-   IF changes involve tests → load testing-standards.md
-   IF changes involve configuration → load technical-constraints.md
-   ```
+   **Context for Agent**: "I'm validating code changes for {ticket-id or branch-name}. The changes involve {identified-change-areas-from-git-analysis}. I need relevant steering context to validate that the implementation follows project standards, architectural patterns, coding guidelines, and quality requirements."
+   
+   **Agent Execution**: Wait for the steering-context-reader agent to return relevant steering context for validation.
    
    **Linear Ticket Context (if available):**
    - If ticket-id provided and follows Linear format (e.g., "PG-123"), fetch ticket details

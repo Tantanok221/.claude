@@ -23,7 +23,14 @@ You are setting up comprehensive steering documents that will provide persistent
 
 ## Process
 
-### 1. **Check for Existing Steering Documents**
+### 1. **Git Branch Management**
+   **Use Git Branch Manager Agent**: Use the git-branch-manager agent to ensure the current branch is the project's master/main branch and is up-to-date, handling all branch checking and switching operations.
+   
+   **Context for Agent**: The agent will be configured to ensure the master/main branch is active and up-to-date for steering setup work.
+   
+   **Agent Execution**: Wait for the git-branch-manager agent to complete its operation. If the agent indicates a failure (e.g., uncommitted changes conflict, Git operation failure), notify the user of the specific issue and exit this command.
+
+### 2. **Check for Existing Steering Documents**
    - Look for `steering/` directory in project root
    - Check for existing documents in the core structure:
      ```

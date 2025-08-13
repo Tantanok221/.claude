@@ -19,69 +19,20 @@ Load the current task from an existing todo list and implement it using referenc
 ## Process
 
 ### 1. **Git Branch Management**
-   **Check current git status and manage branches:**
+   **Use Git Branch Manager Agent**: Use the git-branch-manager agent to ensure the correct Git branch is active for the task, handling all branch checking and switching operations.
    
-   **Determine Master Branch:**
-   - Check git origin URL: `git remote get-url origin`
-   - If origin contains "gitlab" → master branch is "master"
-   - If origin contains "github" → master branch is "main"
-   - Default to "main" if unable to determine
+   **Context for Agent**: The expected branch pattern will be derived from the `ticket-id` or `feature-description` obtained in Step 2 (Session Cache & Todo List Loading). The agent will determine the appropriate branch name and handle switching if needed.
    
-   **Determine Expected Branch Name:**
-   - For ticket-id provided (from `work-progress/{ticket-id}.md` filename): `pg/tk-{ticket-id}` (e.g., `pg/tk-fix-user-login`)
-   - For feature-description provided (if a matching todo list is found and its ID is derived from feature): `feat/{kebab-case-feature}` (e.g., `feat/add-dark-mode`)
-   - **Note**: The exact expected branch name will match the one created by `/plan`.
-   
-   **Branch Validation Process:**
-   ```bash
-   # Check current branch
-   current_branch=$(git branch --show-current)
-   
-   # Determine the expected branch name based on the loaded todo list's ID
-   # (This logic will be executed after step 2, but conceptually the check happens here)
-   # Placeholder for logic: expected_branch = derive_branch_from_todo_list_id(ticket_id_or_feature_description)
-   
-   # Check if on correct branch
-   if current_branch == expected_branch:
-     echo "✓ On correct branch: ${current_branch}"
-     proceed_to_todo_list_load() # Proceed to the next actual step
-   else:
-     echo "✗ Wrong branch. Current: ${current_branch}, Expected: ${expected_branch}"
-     switch_to_correct_branch()
-   ```
-   
-   **Branch Switching Process (if needed):**
-   ```bash
-   # Switch to master and update
-   git checkout {master_branch}  # master or main
-   git fetch origin
-   git pull origin {master_branch}
-   
-   # Create and checkout the expected branch (assuming it might not exist if planning was just done)
-   git checkout -b {expected_branch} || git checkout {expected_branch} # Try create, if exists, just checkout
-   echo "✓ Switched to and updated: ${master_branch}, then switched to: ${expected_branch}"
-   ```
+   **Agent Execution**: Wait for the git-branch-manager agent to complete its operation. If the agent indicates a failure (e.g., uncommitted changes conflict, Git operation failure), notify the user of the specific issue and exit this command.
 
 ### 2. **Session Cache & Todo List Loading**
    **Handle session caching and todo list loading:**
    
-   **Session Cache Template:**
-   ```json
-   {
-     "lastTicketId": "AUTH-123",
-     "lastFeatureDescription": "add OAuth login support", 
-     "timestamp": "2025-01-15T10:30:00Z",
-     "lastCommand": "continue"
-   }
-   ```
-   
    **Session Cache Logic:**
    - If ticket-id or feature-description provided: Use the provided parameters
-   - If no parameters provided: Check for `.claude-session-cache.json` in project root
-   - If cache exists and valid: Use cached ticket ID or feature description, show "✓ Using recent work: {value}"
-   - If no cache or cache invalid: Prompt user with: "No recent work found. Please provide either:
-     - Ticket ID (e.g., AUTH-123)  
-     - Feature description (e.g., add OAuth support)"
+   - If no parameters provided: **Use Session Cache Agent** to check for cached session data
+     - **Context for Agent**: "I need to check session cache for the continue command. No parameters were provided. Please check for existing `.claude-session-cache.json` and return the cached work target or indicate if user input is needed."
+     - **Agent Execution**: Wait for the session-cache-agent to return cached values or prompt for user input
    - If user provides nothing: Exit with "No work specified"
    
    **Todo List Loading:**
@@ -115,7 +66,9 @@ Load the current task from an existing todo list and implement it using referenc
        "dependencies": ["passport", "jsonwebtoken", "bcrypt"],
        "businessContext": "OAuth integration must work with existing JWT system",
        "technicalConstraints": "Rate limiting applied at middleware level",
-       "architecturalPatterns": "Repository pattern in services/, middleware for auth"
+       "architecturalPatterns": "Repository pattern in services/, middleware for auth",
+       "libraryDocumentationInsights": "JWT best practices: use RS256 for production, short expiry for access tokens. Passport OAuth2 requires callback URL configuration.",
+       "integrationPatterns": "OAuth2 flow: authorization code grant with PKCE, store refresh tokens securely"
      },
      "lastUpdated": "2025-01-15T10:30:00Z"
    }
@@ -126,25 +79,65 @@ Load the current task from an existing todo list and implement it using referenc
    - If context cache exists: Load session learnings and show "✓ Loaded session context - resuming with previous discoveries"
    - If no context cache: Continue with standard context loading
    
-   **Load Steering Configuration:**
-   - Read `steering/config.md` for always-include docs and feature mappings
-   - If config.md doesn't exist, use default (coding-standards.md, anti-patterns.md)
+   **Use Steering Context Reader Agent**: Use the steering-context-reader agent to gather relevant steering documentation for the current task.
+   
+   **Context for Agent**: "I'm working on task #{task-number} for {ticket-id}: {task-description}. The task involves files: {file-list} and references steering docs: {steering-doc-list}. I need relevant context from the steering directory to implement this task according to project standards and patterns. Focus on {task-specific-focus-areas}."
+   
+   **Agent Execution**: Wait for the steering-context-reader agent to return only the most relevant steering context for the current task. The agent will read steering/config.md, identify relevant documents, and return filtered context to prevent context bloat.
+   
+   **Library Documentation Context via Tech Doc Agent:**
+   **Use tech-doc-agent when current task involves libraries, frameworks, or integrations:**
+   
+   **Detection Keywords in Task Description:**
+   - Library/framework names: "React", "Express", "Node.js", "JWT", "OAuth", "Stripe", etc.
+   - Migration tasks: "migrate", "upgrade", "update version", "replace with"
+   - Integration tasks: "integrate with", "connect to", "API integration", "SDK"
+   - Implementation patterns: "authentication", "payment", "database", "caching"
+   
+   **Tech Doc Agent Integration Process:**
+   ```
+   IF current task contains library/framework keywords:
+   1. Use tech-doc-agent with task-specific context
+   2. Pass comprehensive context about the implementation task
+   3. Receive focused documentation analysis for the specific task
+   4. Integrate findings into implementation approach
+   ```
+   
+   **Context to Provide to Tech Doc Agent:**
+   ```
+   "I'm implementing task #{task-number} for {ticket-id}: {task-description}.
+   
+   **Problem Context**: {brief description of what needs to be implemented}
+   **Technical Context**: {current tech stack from session cache, file context}
+   **Specific Requirements**: {task details, files to modify, implementation scope}
+   **Scope**: Implementation phase - need current best practices and patterns
+   **Dependencies**: {other systems or libraries involved based on task context}
+   
+   I need current documentation insights for: {detected libraries/frameworks}
+   Focus on: {implementation patterns, API usage, integration examples relevant to the task}"
+   ```
+   
+   **Tech Doc Agent Execution:**
+   - Wait for tech-doc-agent to return focused documentation analysis
+   - Integrate findings into implementation guidance
+   - Reference specific API patterns and current best practices
+   - Include version-specific considerations and implementation examples
    
    **Load Task Context:**
    - Load original issue document (`issues/{ticket-id}-issue.md`)
-   - Load always-include steering documents from config.md
-   - Load task-specific steering documents referenced in current task
-   - Combine with session learnings from context cache if available
+   - Combine steering context from agent with session learnings from context cache if available
+   - Integrate tech-doc-agent insights when libraries/frameworks detected
    - Current task example:
      ```markdown
      - [ ] #3 🟠 Implement OAuth authorization flow
        - Files: routes/auth.js, controllers/AuthController.js
        - Steering: security-architecture.md, api-design-guidelines.md
      
-     # Loads from config.md:
+     # Agent returns filtered context from:
      - Always-include docs (e.g., coding-standards.md, anti-patterns.md)
      - Plus task-specific: security-architecture.md, api-design-guidelines.md
      # Plus session learnings from context cache if available
+     # Plus tech-doc-agent insights for OAuth libraries and JWT implementation
      ```
 
 ### 5. **Present Implementation Plan**
@@ -162,6 +155,13 @@ Load the current task from an existing todo list and implement it using referenc
    
    ## Steering Compliance
    {patterns-and-standards-to-follow}
+   
+   ## Library Documentation Insights
+   {include-if-tech-doc-agent-was-used}
+   - **Current Best Practices**: {library-specific-recommendations}
+   - **Implementation Patterns**: {api-usage-patterns-and-examples}
+   - **Version Considerations**: {compatibility-and-breaking-changes}
+   - **Integration Guidelines**: {specific-integration-approaches}
    ```
    
    Ask for confirmation:
@@ -186,6 +186,7 @@ Load the current task from an existing todo list and implement it using referenc
      - Modifying an existing section of code.
      - Adding a test case.
      - Utilize Gemini CLI MCP (if available) for advanced codebase understanding, dependency mapping, and architectural context when modifying existing files, integrating new components, or responding to user prompts for changes.
+     - **Use tech-doc-agent for just-in-time documentation** when implementing library-specific features, encountering API questions, or needing current best practices for specific frameworks during micro-task implementation.
    - **Present Proposed Changes**:
      - Clearly describe *what* changes were made and *why*, linking back to the overall plan and relevant steering documents.
      - Show actual code snippets, simulated file diffs, or describe specific modifications to files in the chat.
@@ -224,6 +225,21 @@ Load the current task from an existing todo list and implement it using referenc
    - **Control**: User maintains full control over the process, guiding the AI through each incremental step.
    - **Contextual Adaptation**: The AI re-evaluates and adapts its approach based on user feedback during the session.
    - **Progressive Feedback**: Provide continuous updates on current micro-task status and readiness for next steps.
+   
+   **Tech Doc Agent Integration During Implementation:**
+   - **Just-in-Time Documentation**: Use tech-doc-agent when encountering specific library/framework implementation questions during micro-tasks
+   - **API Reference Support**: Call tech-doc-agent for current API patterns, method signatures, or integration examples
+   - **Best Practices Guidance**: Get current best practices when implementing library-specific features or patterns
+   - **Version-Specific Help**: Access current documentation for version-specific features or breaking changes
+   - **User-Requested Documentation**: Allow user to request "get docs for [library]" or "check current [framework] patterns" during implementation
+   
+   **Tech Doc Agent Usage Scenarios in Interactive Session:**
+   - When implementing authentication flows (OAuth, JWT, etc.)
+   - During API integrations with third-party services
+   - When working with specific framework patterns (React hooks, Express middleware, etc.)
+   - For database migration or ORM usage patterns
+   - During testing implementation with specific testing libraries
+   - When encountering version compatibility or deprecation issues
 
 ### 7. **Update Progress & Commit Task**
    - This step is triggered *only when the entire current task from the todo list* (as identified in step 3) is considered fully implemented and explicitly confirmed by the user via "Done Task".
@@ -300,10 +316,11 @@ Load the current task from an existing todo list and implement it using referenc
    **Update both session and context caches (only if user confirmed in Step 9):**
    
    **Update Session Cache:**
-   - Write current ticket ID and feature description to `.claude-session-cache.json` 
-   - Include timestamp and command name ("continue")
-   - Add cache file to `.git/info/exclude`
-   - Show: "✓ Updated session cache for future commands"
+   **Use Session Cache Agent**: Use the session-cache-agent to update the session cache with current work details.
+   
+   **Context for Agent**: "I need to update the session cache for the continue command. TicketId='{current-ticket-id}' featureDescription='{current-feature-description}' command='continue'. Please update the session cache and ensure git exclusion."
+   
+   **Agent Execution**: Wait for the session-cache-agent to confirm cache update. Show: "✓ Updated session cache for future commands"
    
    **Update Context Cache:**
    - Capture session learnings and write to `work-progress/{ticket-id}-context.json`
@@ -314,6 +331,8 @@ Load the current task from an existing todo list and implement it using referenc
      - **Business Context**: Domain rules, constraints, or requirements learned during implementation
      - **Technical Constraints**: Performance, security, or design limitations discovered
      - **Architectural Patterns**: Coding patterns, conventions, or approaches used in this codebase
+     - **Library Documentation Insights**: Key findings from tech-doc-agent about current best practices, API patterns, version-specific features, and implementation approaches for libraries used
+     - **Integration Patterns**: Successful integration strategies and patterns discovered for third-party services or libraries
    - Show: "✓ Updated context cache with session learnings"
 
 ### 11. **Show Next Steps**
@@ -327,9 +346,46 @@ Load the current task from an existing todo list and implement it using referenc
    Ready for next development session!
    ```
 
+## Example Usage
+
+```bash
+/continue AUTH-123
+# 1. Git branch management: Verify on feature/auth-oauth branch
+# 2. Load todo list: work-progress/AUTH-123.md
+# 3. Find current task: "Implement OAuth authorization flow"
+# 4. Load context:
+#    - Steering docs: security-architecture.md, api-design-guidelines.md
+#    - Detect keywords: "OAuth", "authorization" → tech-doc-agent triggered
+#    - Call tech-doc-agent: "implementing OAuth authorization flow for Express.js app"
+#    - Tech-doc-agent returns: OAuth 2.0 patterns, Passport.js examples, JWT best practices
+#    - Load session context cache with previous discoveries
+# 5. Present implementation plan with tech-doc-agent insights:
+#    - OAuth 2.0 authorization code flow with PKCE
+#    - Passport OAuth2 strategy configuration
+#    - JWT token handling patterns
+# 6. User confirms plan
+# 7. Interactive session:
+#    - Micro-task 1: Create OAuth route handler
+#    - During implementation: "How should I handle OAuth errors?"
+#    - Use tech-doc-agent for current error handling patterns
+#    - Apply OAuth-specific error handling based on docs
+#    - Continue with remaining micro-tasks
+# 8. User says "Done Task"
+# 9. Update todo list, mark task complete
+# 10. Commit changes with OAuth implementation
+# 11. Update context cache with OAuth implementation insights
+# 12. Ready for next task
+
+/continue 
+# (no parameters - uses session cache)
+# Detects recent work: AUTH-123 from session cache
+# Continues with next task in sequence
+```
+
 ## Important Notes
 - **ONE TASK AT A TIME**: Focus on current task, ignore completed/future tasks during the interactive session.
 - **USER CONFIRMATION**: Never modify files without explicit approval for each incremental change or the overall task plan. **Never commit without explicit user approval.**
 - **PROGRESS TRACKING**: Update todo list automatically after the *entire task* is completed.
 - **STEERING COMPLIANCE**: Always follow referenced patterns and standards, re-evaluating if user feedback necessitates a different approach.
 - **MICRO-COMMITS**: Each completed task from the todo list results in a dedicated, small Git commit, promoting clear history and easy reverts.
+- **TECH DOC AGENT INTEGRATION**: Automatically use tech-doc-agent for library/framework documentation during task implementation.

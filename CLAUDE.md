@@ -57,3 +57,33 @@
 - Always resolve library ID first before fetching docs
 - Useful for getting current documentation and code examples
 
+### Tech Doc Agent Integration
+- **IMPORTANT**: Use tech-doc-agent automatically when you need current library/framework documentation
+- **Automatic Triggers**: Whenever user mentions or you encounter:
+  - Specific libraries or frameworks (React, Node.js, Express, etc.)
+  - Version conflicts or compatibility issues
+  - Migration tasks ("migrate from X to Y", "upgrade to", "switch from")
+  - Integration problems (third-party APIs, SDKs, services)
+  - Best practices for specific technologies
+  - Implementation questions for specific APIs or libraries
+
+### How to Use Tech Doc Agent Automatically
+- **Always provide rich context** when calling tech-doc-agent:
+  - What problem you're trying to solve
+  - Current technical context (stack, versions, constraints)
+  - Specific requirements or goals
+  - Scope of work (implementation, design, debugging, migration)
+  - Dependencies and related systems
+
+- **Example Context to Pass**:
+  ```
+  "I'm helping the user implement JWT authentication in a Node.js Express application. 
+  They currently use sessions and want to migrate to JWT. I need current best practices 
+  for JWT libraries, security considerations, and migration strategies. The application 
+  has existing user management and needs to maintain backward compatibility during transition."
+  ```
+
+- **Use tech-doc-agent proactively** - don't wait for user to ask for documentation
+- **Focus requests** - ask for specific documentation sections relevant to the immediate problem
+- **Prevent context rot** - rely on tech-doc-agent to provide focused, relevant information
+
