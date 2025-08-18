@@ -1,0 +1,9 @@
+{
+  "statusLine": {
+    "type": "command",
+    "command": "bun x ccusage statusline --no-offline",
+    "padding": 0
+  },
+  "model": "sonnet"
+  
+}
